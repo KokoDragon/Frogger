@@ -25,7 +25,7 @@ void DAC_Init(void){
 	count = 0;
 	GPIO_PORTB_DEN_R |= 0x0F;
 	GPIO_PORTB_DIR_R |= 0x0F;
-}
+} 
 
 // **************DAC_Out*********************
 // output to DAC
@@ -39,4 +39,4 @@ void DAC_Out(uint32_t data){
 	GPIO_PORTB_DATA_R |= (0x02 & data);
 	GPIO_PORTB_DATA_R |= (0x04 & data);
 	GPIO_PORTB_DATA_R |= (0x08 & data);
-}
+} 

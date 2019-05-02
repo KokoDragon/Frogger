@@ -49,11 +49,6 @@
 // VCC (pin 2) connected to +3.3 V
 // Gnd (pin 1) connected to ground
 
-
-
-
-
-
 #include <stdint.h>
 #include "../inc/tm4c123gh6pm.h"
 #include "ST7735.h"
@@ -64,74 +59,184 @@
 #include "Sound.h"
 #include "Timer0.h"
 #include "Timer1.h"
-#include "SysTick.h"
+#include "Print.h"
+
 
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
 void Delay100ms(uint32_t count); // time delay in 0.1 seconds
 
+uint32_t array[2];
+	
+void SysTick_Init(void){
+	NVIC_ST_CTRL_R = 0;                   // disable SysTick during setup
+  NVIC_ST_RELOAD_R = 0x0013D620;  // maximum reload value for 60MHZ
+  NVIC_ST_CURRENT_R = 0;                // any write to current clears it
+  NVIC_ST_CTRL_R = 0x07; // enable SysTick with core clock and interrupts
+}
+
 void PortF_Init(void){
 	volatile int delay;
 	SYSCTL_RCGCGPIO_R |= 0x20;  //initialize port F clock
 	delay++;
-	GPIO_PORTF_DEN_R |= 0x0E;   //enables PF1, PF2, PF3
-	GPIO_PORTF_DIR_R |= 0x0E;   //establish PF1, PF2, PF3 as outputs
+	GPIO_PORTF_DEN_R |= 0x1E;   //enables PF1, PF2, PF3, PF4
+	GPIO_PORTF_DIR_R |= 0x0E;   //establish PF1, PF2, PF3 as outputs, PF4 as input
+	
+	volatile int delay2;
+	SYSCTL_RCGCGPIO_R |= 0x01;  //initialize port A clock
+	delay2++;
+	GPIO_PORTA_DEN_R |= 0x10;   //enable PA4
+	GPIO_PORTA_DIR_R &= 0xEF;   //enable PA4 as input
 }
 
-int x_frog = 50;
-int x_car = 50;
-int x_car2 = 50;
-int x_truck = 50;
+void setGrass(void){
+	ST7735_DrawBitmap(0, 18, GRASS, 24,18);
+	ST7735_DrawBitmap(24, 18, GRASS, 24,18);
+	ST7735_DrawBitmap(48, 18, GRASS, 24,18);
+	ST7735_DrawBitmap(72, 18, GRASS, 24,18);
+	ST7735_DrawBitmap(96, 18, GRASS, 24,18);
+	ST7735_DrawBitmap(120, 18, GRASS, 24,18);
+	
+	ST7735_DrawBitmap(0, 100, GRASS, 24,18);
+	ST7735_DrawBitmap(24, 100, GRASS, 24,18);
+	ST7735_DrawBitmap(48, 100, GRASS, 24,18);
+	ST7735_DrawBitmap(72, 100, GRASS, 24,18);
+	ST7735_DrawBitmap(96, 100, GRASS, 24,18);
+	ST7735_DrawBitmap(120, 100, GRASS, 24,18);
+	
+	ST7735_DrawBitmap(0, 160, GRASS, 24,18);
+	ST7735_DrawBitmap(24, 160, GRASS, 24,18);
+	ST7735_DrawBitmap(48, 160, GRASS, 24,18);
+	ST7735_DrawBitmap(72, 160, GRASS, 24,18);
+	ST7735_DrawBitmap(96, 160, GRASS, 24,18);
+	ST7735_DrawBitmap(113, 160, GRASS, 24,18);
+	ST7735_DrawBitmap(117, 160, GRASS, 24,18);
+}
 
 int main(void){
   PLL_Init(Bus80MHz);       // Bus clock is 80 MHz 
-  Random_Init(NVIC_ST_CURRENT_R);
-	ST7735_InitR(INITR_REDTAB);
-	SysTick_Init();
-	PortF_Init();
-	
-
-  //Output_Init();
+  Random_Init(1);
+  Output_Init();
   ST7735_FillScreen(0x0000);            // set screen to black
-  
-  ST7735_DrawBitmap(50,50, frog1, 24, 18);
-	ST7735_DrawBitmap(50,110,car,22,20);
-	ST7735_DrawBitmap(50,130,car,22,20);
-	ST7735_DrawBitmap(50,20,truck,35,15);
-	EnableInterrupts();
-	/*ST7735_DrawBitmap(50,90,snake,37,19);
+	ADC_Init89();
+	PortF_Init();
+	Timer0_Init();
+	Timer1_Init();
+	Sound_Init();
 	
-	ST7735_DrawBitmap(0,70,ground,16,14);
-	ST7735_DrawBitmap(14,70,ground,16,14);
-	ST7735_DrawBitmap(28,70,ground,16,14);
-	ST7735_DrawBitmap(42,70,ground,16,14);
-	ST7735_DrawBitmap(56,70,ground,16,14);
-	ST7735_DrawBitmap(60,70,ground,16,14);
-	ST7735_DrawBitmap(74,70,ground,16,14);
-	ST7735_DrawBitmap(88,70,ground,16,14);
-	ST7735_DrawBitmap(92,70,ground,16,14);
-	ST7735_DrawBitmap(106,70,ground,16,14);
-	ST7735_DrawBitmap(120,70,ground,16,14);
-	ST7735_DrawBitmap(50,70,snake,37,19);*/
-  Delay100ms(100);              // delay 5 sec at 80 MHz
-  /*ST7735_FillScreen(0x0000);            // set screen to black
-  ST7735_SetCursor(1, 1);
-  ST7735_OutString("GAME OVER");
-  ST7735_SetCursor(1, 2);
-  ST7735_OutString("Nice try,");
-  ST7735_SetCursor(1, 3);
-  ST7735_OutString("Earthling!");
-  ST7735_SetCursor(2, 4);
-  LCD_OutDec(1234);*/
+	ST7735_DrawBitmap(0, 160, splash, 128,160);
+	while((GPIO_PORTA_DATA_R & 0x10) == 0){};
+	ST7735_FillScreen(0x0000);            // set screen to black
+	EnableInterrupts();
+	SysTick_Init();
+	setGrass();
   while(1){
   }
 
 }
+long x = 64;
+long y = 160;
+
+int slow = 0;
+long xcar_1 = 0;
+long xtruck_1 = 128;
+long xcar_2 = 25;
+long xtruck_2 = 90;
+long xcar_3 = 30;
+void SysTick_Handler(void){
+	//	GPIO_PORTF_DATA_R ^= 0x04;
+		ADC_In89(array);
+		
+		if(array[0] < 2000){                       //up
+			if(y == 18)															 
+				  ;
+			else{																					
+					y--;																			
+					ST7735_DrawBitmap(x, y, frog1, 24,18);
+			}
+		}
+		if(array[0] > 2500){                        //down
+			if(y == 160)
+				;
+			else{
+				y++;
+				ST7735_DrawBitmap(x, y, frog1, 24,18);
+			}
+		}
+		
+		if(array[1] > 2500){                          //right
+			if(x == 104)
+				;
+			else{
+				x++;
+				ST7735_DrawBitmap(x, y, frog1, 24,18);
+			}
+		}
+		if(array[1] < 2000){                          //left
+			if(x == 0)
+				;
+			else{
+				x--;
+				ST7735_DrawBitmap(x, y, frog1, 24,18);
+			}
+		}
+		
+		slow++;
+		if(slow==1){
+			xcar_1 = (xcar_1 +1) % 128;
+			ST7735_DrawBitmap(xcar_1, 140, car, 22,20);      //car on first lane
+			
+			xtruck_1--;
+			if(xtruck_1 == 1){
+				xtruck_1 = 128;
+				ST7735_FillRect(0,105,35,15,0x0000);
+			}
+			ST7735_DrawBitmap(xtruck_1, 120, truck, 35,15);  //truck on 2nd lane
+			
+			xcar_2 = (xcar_2 +1) % 128;
+			ST7735_DrawBitmap(xcar_1, 80, car, 22,20);       //car on 3rd lane
+			
+			xtruck_2--;
+			if(xtruck_2 == 1){
+				xtruck_2 = 128;
+				ST7735_FillRect(0,45,35,15,0x0000);
+			}
+			ST7735_DrawBitmap(xtruck_2, 60, truck, 35,15);   //truck on 4th lane
+			
+			xcar_3 = (xcar_3 +1) % 128;
+			ST7735_DrawBitmap(xcar_3, 40, car, 22,20);       //car on 5th lane
+			
+			slow = 0;
+		}
+		
+		if((y-18) <= 140 && (y >= 120) && (x >= xcar_1) && (x <= (xcar_1 +22))){
+			  ST7735_FillScreen(0x0000);            // set screen to black
+				setGrass();
+				x = 64;
+			  y= 128;
+		}
+		
+		if((y-18) <= 120 && (y >= 105) && (x >= xtruck_1) && (x <= (xtruck_1 +35)) && ((x+24)>=xtruck_1)){
+			  ST7735_FillScreen(0x0000);            // set screen to black
+		    setGrass();
+				x = 64;
+			  y= 128;
+		}
+
+		
+}
 
 
-// You can't use this timer, it is here for starter code only 
+
+
+
+
+
+
+/* You can't use this timer, it is here for starter code only 
 // you must use interrupts to perform delays
-void Delay100ms(uint32_t count){uint32_t volatile time;
+void Delay100ms(uint32_t count){
+	uint32_t volatile time;
   while(count>0){
     time = 727240;  // 0.1sec at 80 MHz
     while(time){
@@ -139,21 +244,5 @@ void Delay100ms(uint32_t count){uint32_t volatile time;
     }
     count--;
   }
-}
-
-void SysTick_Handler(void)
-{
-	GPIO_PORTF_DATA_R ^= 0x02;
-	GPIO_PORTF_DATA_R ^= 0x02;
-	ST7735_FillScreen(0x0000); 
-	x_frog = (x_frog+1)%120;
-	x_car = (x_car+1)%120;
-	x_car2 = (x_car2 + 2) %120;
-	x_truck = (x_truck + 2) %120;
-	ST7735_DrawBitmap(x_frog, 50, frog1, 24, 18);
-	ST7735_DrawBitmap(x_car,110,car,22,20);
-	ST7735_DrawBitmap(x_car2,130,car,22,20);
-	ST7735_DrawBitmap(x_truck,20,truck,35,15);
-	GPIO_PORTF_DATA_R ^= 0x02;
-}
+} */
 
