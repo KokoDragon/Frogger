@@ -67,6 +67,27 @@ void EnableInterrupts(void);  // Enable interrupts
 void Delay100ms(uint32_t count); // time delay in 0.1 seconds
 
 uint32_t array[2];
+
+typedef struct enemy {
+	uint32_t x_pos;
+	uint32_t y_pos;
+	uint32_t x_size;
+	uint32_t y_size;
+	unsigned short* image[];
+} enemy_t;
+	
+void InitEnemy(enemy_t* init, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, unsigned short* i) {
+	*init.x_pos = x1;
+	*init.y_pos = y1;
+	*init.x_size = x2;
+	*init.y_size = y2;
+	*init.image = i;
+}
+
+void MoveEnemy(enemy_t* init){
+	*init.x_pos++;
+	ST7735_DrawBitmap(init.x_pos, init.y_pos, *init.image, init.x_size, init.y_size);
+}
 	
 void SysTick_Init(void){
 	NVIC_ST_CTRL_R = 0;                   // disable SysTick during setup

@@ -21,19 +21,49 @@ Target DLL:      lmidk-agdi.dll V???
 Dialog DLL:      TCM.DLL V1.36.1.0
  
 <h2>Project:</h2>
-C:\Keil_v5\EE319KwareSpring2019\Lab10_EE319K\SpaceInvaders.uvprojx
-Project File Date:  04/29/2019
+C:\Users\shouc\Documents\GitHub\sp19-lab10-ms73656_swc746\SpaceInvaders.uvprojx
+Project File Date:  05/02/2019
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 6 (build 750)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'SpaceInvaders'
+compiling Timer0.c...
+Timer0.c(25): error:  #5: cannot open source input file "../inc/tm4c123gh6pm.h": No such file or directory
+  #include "../inc/tm4c123gh6pm.h"
+Timer0.c: 0 warnings, 1 error
+compiling ADC.c...
+ADC.c(26): error:  #5: cannot open source input file "../inc/tm4c123gh6pm.h": No such file or directory
+  #include "../inc/tm4c123gh6pm.h"
+ADC.c: 0 warnings, 1 error
+compiling DAC.c...
+DAC.c(13): error:  #5: cannot open source input file "../inc/tm4c123gh6pm.h": No such file or directory
+  #include "../inc/tm4c123gh6pm.h"
+DAC.c: 0 warnings, 1 error
+compiling Timer1.c...
+Timer1.c(25): error:  #5: cannot open source input file "../inc/tm4c123gh6pm.h": No such file or directory
+  #include "../inc/tm4c123gh6pm.h"
+Timer1.c: 0 warnings, 1 error
 compiling SpaceInvaders.c...
-SysTick.h(6): warning:  #1-D: last line of file ends without a newline
-  void SysTick_Wait10ms(uint32_t delay);
-SpaceInvaders.c: 1 warning, 0 errors
-linking...
-Program Size: Code=3088 RO-data=6772 RW-data=72 ZI-data=1120  
-".\SpaceInvaders.axf" - 0 Error(s), 1 Warning(s).
+SpaceInvaders.c(53): error:  #5: cannot open source input file "../inc/tm4c123gh6pm.h": No such file or directory
+  #include "../inc/tm4c123gh6pm.h"
+SpaceInvaders.c: 0 warnings, 1 error
+compiling Sound.c...
+Sound.c(8): error:  #5: cannot open source input file "../inc/tm4c123gh6pm.h": No such file or directory
+  #include "../inc/tm4c123gh6pm.h"
+Sound.c: 0 warnings, 1 error
+compiling ST7735.c...
+ST7735.c(58): error:  #5: cannot open source input file "../inc/tm4c123gh6pm.h": No such file or directory
+  #include "../inc/tm4c123gh6pm.h"
+ST7735.c: 0 warnings, 1 error
+compiling PLL.c...
+PLL.c(26): error:  #5: cannot open source input file "../inc/tm4c123gh6pm.h": No such file or directory
+  #include "../inc/tm4c123gh6pm.h"
+PLL.c: 0 warnings, 1 error
+compiling SysTick.c...
+SysTick.h(2): error:  #5: cannot open source input file "../inc/tm4c123gh6pm.h": No such file or directory
+  #include "../inc/tm4c123gh6pm.h"
+SysTick.c: 0 warnings, 1 error
+".\SpaceInvaders.axf" - 9 Error(s), 0 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -56,6 +86,7 @@ Package Vendor: Keil
 <h2>Collection of Component Files used:</h2>
 
    * Component: ARM::CMSIS:CORE:5.1.2
+Target not created.
 Build Time Elapsed:  00:00:01
 </pre>
 </body>
