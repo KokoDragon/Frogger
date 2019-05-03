@@ -67,40 +67,75 @@ void EnableInterrupts(void);  // Enable interrupts
 void Delay100ms(uint32_t count); // time delay in 0.1 seconds
 
 uint32_t array[2];
+long x = 64;
+long y = 160;
 
 typedef struct enemy{
 	uint32_t x_pos;
 	uint32_t y_pos;
 	uint32_t x_size;
 	uint32_t y_size;
-	unsigned short* image;
+	const uint16_t *image;
 } enemy_t;
 	
-void InitEnemy(enemy_t init, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, unsigned short* i) {
-	init.x_pos = x1;
-	init.y_pos = y1;
-	init.x_size = x2;
-	init.y_size = y2;
-	init.image = i;
+void InitEnemy(enemy_t* init, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, const uint16_t *i) {
+	init->x_pos = x1;
+	init->y_pos = y1;
+	init->x_size = x2;
+	init->y_size = y2;
+	init->image = i;
 }
 
-void MoveEnemy(enemy_t init){
-	init.x_pos++;
-	ST7735_DrawBitmap(init.x_pos, init.y_pos, init.image, init.x_size, init.y_size);
+void MoveEnemy(enemy_t *init, int space){
+	if (init->x_pos >= 128)
+		init->x_pos=0;
+	else if (space < 0 && init->x_pos == 0){
+		init->x_pos = 128;
+		ST7735_FillRect(0,105,35,15,0x0000);
+	}
+	init->x_pos = (init->x_pos + space);
+	ST7735_DrawBitmap(init->x_pos, init->y_pos, init->image, init->x_size, init->y_size);
 }
 
 
 //CheckCollision
 //returns 0 if no collision detected
 //returns 1 if a collision is detected
-int CheckCollision(uint32_t px, uint32_t py, enemy_t check){
-	if((py-18) <= check.y_pos && (py >= (check.y_pos - check.y_size) && (px >= check.x_pos) && (px <= (check.x_pos + check.x_size))))
+int CheckCollision(uint32_t px, uint32_t py, enemy_t* check){
+	if((py-18) <= check->y_pos && (py >= (check->y_pos - check->y_size) && (px >= check->x_pos) && (px <= (check->x_pos + check->x_size))))
 		return 1;
 	
 	return 0;
 }
+
+int CheckGrassToStreet(){
+	if(y == 160 || y==106)
+		return 1;
+	return 0;
+}
 	
+int CheckStreetToGrass(){
+	if(y==124 || y==52)
+		return 1;
+	return 0;
+}
+
+int CheckGrassToStreetDown(){
+	if(y == 34 || y==106)
+		return 1;
+	return 0;
+}
 	
+int CheckStreetToGrassDown(){
+	if(y==142|| y==88)
+		return 1;
+	return 0;
+}
+
+enemy_t car1;
+enemy_t truck1;
+
+
 void SysTick_Init(void){
 	NVIC_ST_CTRL_R = 0;                   // disable SysTick during setup
   NVIC_ST_RELOAD_R = 0x0013D620;  // maximum reload value for 60MHZ
@@ -123,19 +158,19 @@ void PortF_Init(void){
 }
 
 void setGrass(void){
-	ST7735_DrawBitmap(0, 18, GRASS, 24,18);
-	ST7735_DrawBitmap(24, 18, GRASS, 24,18);
-	ST7735_DrawBitmap(48, 18, GRASS, 24,18);
-	ST7735_DrawBitmap(72, 18, GRASS, 24,18);
-	ST7735_DrawBitmap(96, 18, GRASS, 24,18);
-	ST7735_DrawBitmap(120, 18, GRASS, 24,18);
+	ST7735_DrawBitmap(0, 34, GRASS, 24,18);
+	ST7735_DrawBitmap(24, 34, GRASS, 24,18);
+	ST7735_DrawBitmap(48, 34, GRASS, 24,18);
+	ST7735_DrawBitmap(72, 34, GRASS, 24,18);
+	ST7735_DrawBitmap(96, 34, GRASS, 24,18);
+	ST7735_DrawBitmap(120, 34, GRASS, 24,18);
 	
-	ST7735_DrawBitmap(0, 100, GRASS, 24,18);
-	ST7735_DrawBitmap(24, 100, GRASS, 24,18);
-	ST7735_DrawBitmap(48, 100, GRASS, 24,18);
-	ST7735_DrawBitmap(72, 100, GRASS, 24,18);
-	ST7735_DrawBitmap(96, 100, GRASS, 24,18);
-	ST7735_DrawBitmap(120, 100, GRASS, 24,18);
+	ST7735_DrawBitmap(0, 106, GRASS, 24,18);
+	ST7735_DrawBitmap(24, 106, GRASS, 24,18);
+	ST7735_DrawBitmap(48, 106, GRASS, 24,18);
+	ST7735_DrawBitmap(72, 106, GRASS, 24,18);
+	ST7735_DrawBitmap(96, 106, GRASS, 24,18);
+	ST7735_DrawBitmap(120, 106, GRASS, 24,18);
 	
 	ST7735_DrawBitmap(0, 160, GRASS, 24,18);
 	ST7735_DrawBitmap(24, 160, GRASS, 24,18);
@@ -157,20 +192,41 @@ int main(void){
 	Timer1_Init();
 	Sound_Init();
 	
-	ST7735_DrawBitmap(0, 160, splash, 128,160);
-	while((GPIO_PORTA_DATA_R & 0x10) == 0){};
+	while((GPIO_PORTA_DATA_R & 0x10) == 0){
+		int titleDelay = 0;
+		int titleDelay2 = 0;
+		while(titleDelay != 10){
+			ST7735_DrawBitmap(0, 160, splash, 128,160);
+			titleDelay++;
+		}
+		
+		while(titleDelay2 != 10){
+			ST7735_DrawBitmap(0, 160, splashflash, 128,160);
+			titleDelay2++;
+		}
+		
+	};
 	ST7735_FillScreen(0x0000);            // set screen to black
+	setGrass();
+	int count = 0;
+	InitEnemy(&car1, 0, 140, 22, 20, car);
+	InitEnemy(&truck1, 126,120, 35,15,truck);
 	EnableInterrupts();
 	SysTick_Init();
-	setGrass();
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Level 1!");
   while(1){
+		
   }
 
 }
-long x = 64;
-long y = 160;
+
+
+
+
 
 int slow = 0;
+int slow2 = 0;
 long xcar_1 = 0;
 long xtruck_1 = 128;
 long xcar_2 = 25;
@@ -178,84 +234,108 @@ long xtruck_2 = 90;
 long xcar_3 = 30;
 void SysTick_Handler(void){
 	//	GPIO_PORTF_DATA_R ^= 0x04;
+	
+	//  ST7735_DrawBitmap(x, y, frograss, 24,18); 
 		ADC_In89(array);
-		
-		if(array[0] < 2000){                       //up
-			if(y == 18)															 
-				  ;
-			else{																					
-					y--;																			
+	  slow2++;
+		if(slow2 == 12){
+			
+			if(array[0] < 2000){                       //up
+				if(CheckStreetToGrass() == 1){
+					y-= 18;
+					ST7735_DrawBitmap(x, y, frograss, 24,18);
+					ST7735_FillRect(x,y,24,18,0x0000);
+				}
+				
+				else if(CheckGrassToStreet()==1){
+					y-=18;
 					ST7735_DrawBitmap(x, y, frog1, 24,18);
+					ST7735_DrawBitmap(x, y+18, GRASS, 24,18);
+				}
+				else if (CheckGrassToStreet() == 0 && CheckStreetToGrass() == 0){
+					if(y < 35)															 
+							;
+					else{																					
+							y-= 18;																			
+							ST7735_DrawBitmap(x, y, frog1, 24,18);
+							ST7735_FillRect(x,y,24,18,0x0000);
+					}
+				}
 			}
-		}
-		if(array[0] > 2500){                        //down
-			if(y == 160)
-				;
-			else{
-				y++;
-				ST7735_DrawBitmap(x, y, frog1, 24,18);
+			
+			if(array[0] > 2500){                        //down
+				if(CheckStreetToGrassDown() == 1){
+					y+= 18;
+					ST7735_DrawBitmap(x, y, frograss, 24,18);
+					ST7735_FillRect(x,y-36,24,18,0x0000);
+				}
+				
+				else if(CheckGrassToStreetDown()==1){
+					y+=18;
+					ST7735_DrawBitmap(x, y, frog1, 24,18);
+					ST7735_DrawBitmap(x, y-18, GRASS, 24,18);
+				}
+				else {
+					if(y > 150)															 
+							;
+					else{																					
+							y+= 18;																			
+							ST7735_DrawBitmap(x, y, frog1, 24,18);
+							ST7735_FillRect(x,y-36,24,18,0x0000);
+					}
+				}
 			}
-		}
 		
-		if(array[1] > 2500){                          //right
-			if(x == 104)
-				;
-			else{
-				x++;
-				ST7735_DrawBitmap(x, y, frog1, 24,18);
+			if(array[1] > 2500){                          //right
+				if(x > 103)
+					;
+				else{
+					x+=24;
+					if(y == 160 || y == 106){
+					ST7735_DrawBitmap(x, y, frograss, 24,18);
+					ST7735_DrawBitmap(x-24, y, GRASS, 24,18);
+					}
+					else{
+					ST7735_DrawBitmap(x, y, frog1, 24,18);
+					ST7735_FillRect(x-24,y-18,24,18,0x0000);
+					}
+				}
 			}
-		}
-		if(array[1] < 2000){                          //left
-			if(x == 0)
-				;
-			else{
-				x--;
-				ST7735_DrawBitmap(x, y, frog1, 24,18);
+			if(array[1] < 2000){                          //left
+				if(x < 5)
+					;
+				else{
+					x-=24;
+					if(y == 160 || y == 106){
+					ST7735_DrawBitmap(x, y, frograss, 24,18);
+					ST7735_DrawBitmap(x+24, y, GRASS, 24,18);
+					}
+					else{
+					ST7735_DrawBitmap(x, y, frog1, 24,18);
+					ST7735_FillRect(x+24,y-18,24,18,0x0000);
+					}
+				}
 			}
+			slow2 = 0;
 		}
 		
 		slow++;
-		if(slow==1){
-			xcar_1 = (xcar_1 +1) % 128;
-			ST7735_DrawBitmap(xcar_1, 140, car, 22,20);      //car on first lane
-			
-			xtruck_1--;
-			if(xtruck_1 == 1){
-				xtruck_1 = 128;
-				ST7735_FillRect(0,105,35,15,0x0000);
-			}
-			ST7735_DrawBitmap(xtruck_1, 120, truck, 35,15);  //truck on 2nd lane
-			
-			xcar_2 = (xcar_2 +1) % 128;
-			ST7735_DrawBitmap(xcar_1, 80, car, 22,20);       //car on 3rd lane
-			
-			xtruck_2--;
-			if(xtruck_2 == 1){
-				xtruck_2 = 128;
-				ST7735_FillRect(0,45,35,15,0x0000);
-			}
-			ST7735_DrawBitmap(xtruck_2, 60, truck, 35,15);   //truck on 4th lane
-			
-			xcar_3 = (xcar_3 +1) % 128;
-			ST7735_DrawBitmap(xcar_3, 40, car, 22,20);       //car on 5th lane
-			
+		if (slow == 5){
+			MoveEnemy(&car1, 1);
+			MoveEnemy(&truck1, -1);
 			slow = 0;
 		}
 		
-		if((y-18) <= 140 && (y >= 120) && (x >= xcar_1) && (x <= (xcar_1 +22))){
-			  ST7735_FillScreen(0x0000);            // set screen to black
-				setGrass();
-				x = 64;
-			  y= 128;
+		if(CheckCollision(x,y,&car1)==1 || CheckCollision(x,y,&truck1)==1){
+			ST7735_FillScreen(0x0000);            // set screen to black
+			DisableInterrupts();
+			ST7735_DrawBitmap(0, 160, gameoverscreen, 128,160);
+			//ST7735_SetCursor(0,0);
+			//ST7735_OutString("Level 1!");
+			//setGrass();
+			//x = 64;
+		  //y= 160;
 		}
-		
-		if((y-18) <= 120 && (y >= 105) && (x >= xtruck_1) && (x <= (xtruck_1 +35)) && ((x+24)>=xtruck_1)){
-			  ST7735_FillScreen(0x0000);            // set screen to black
-		    setGrass();
-				x = 64;
-			  y= 128;
-		}
-
 		
 }
 
