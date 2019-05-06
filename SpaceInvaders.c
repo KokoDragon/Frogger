@@ -56,19 +56,147 @@
 #include "PLL.h"
 #include "ADC.h"
 #include "Images.h"
-#include "Sound.h"
-#include "Timer0.h"
-#include "Timer1.h"
+//#include "Sound.h"
+//#include "Timer0.h"
 #include "Print.h"
+//#include "DAC.h"
 
 
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
 void Delay100ms(uint32_t count); // time delay in 0.1 seconds
 
+
+
+const unsigned short wave[31] = {8,9,11,12,13,14,14,15,15,14,14,13,12,11,9,8,7,5,4,3,2,2,1,1,1,2,2,3,4,5,7}; //4-bit sine wave table
+uint32_t waveCount = 0;
+void (*PeriodicTask)(void);
+	
+// **************DAC_Init*********************
+// Initialize 4-bit DAC, called once 
+// Input: none
+// Output: none
+void Timer1_Init(/*uint32_t period*/){
+	volatile int delay;
+  SYSCTL_RCGCTIMER_R |= 0x02;   // 0) activate TIMER1
+	delay++;
+	delay++;
+	delay++;
+	delay++;	
+  //PeriodicTask = task;          // user function
+  TIMER1_CTL_R = 0x00000000;    // 1) disable TIMER1A during setup
+  TIMER1_CFG_R = 0x00000000;    // 2) configure for 32-bit mode
+  TIMER1_TAMR_R = 0x00000002;   // 3) configure for periodic mode, default down-count settings
+  TIMER1_TAILR_R = 4000;         //period-1;    // 4) reload value
+  TIMER1_TAPR_R = 0;            // 5) bus clock resolution
+  TIMER1_ICR_R = 0x00000001;    // 6) clear TIMER1A timeout flag
+  TIMER1_IMR_R = 0x00000001;    // 7) arm timeout interrupt
+  NVIC_PRI5_R = (NVIC_PRI5_R&0xFFFF00FF)|0x00008000; // 8) priority 4
+// interrupts enabled in the main program after all devices initialized
+// vector number 37, interrupt number 21
+  NVIC_EN0_R = 1<<21;           // 9) enable IRQ 21 in NVIC
+  TIMER1_CTL_R = 0x00000001;    // 10) enable TIMER1A
+}
+
+/*void DAC_Init(void){
+	SYSCTL_RCGCGPIO_R |= 0x02;
+	volatile uint32_t count;
+	count++;
+	GPIO_PORTB_DEN_R |= 0x0F;
+	GPIO_PORTB_DIR_R |= 0x0F;
+	
+} */
+
+// **************DAC_Out*********************
+// output to DAC
+// Input: 4-bit data, 0 to 15 
+// Input=n is converted to n*3.3V/15
+// Output: none
+
+/*void DAC_Out(uint32_t data){
+	GPIO_PORTB_DATA_R &= 0x0;
+	GPIO_PORTB_DATA_R |= (0x01 & data);
+	GPIO_PORTB_DATA_R |= (0x02 & data);
+	GPIO_PORTB_DATA_R |= (0x04 & data);
+	GPIO_PORTB_DATA_R |= (0x08 & data);
+} */
+void DAC_Out(uint32_t data)
+{
+	GPIO_PORTB_DATA_R=data&0x0F;
+}	
+
+int ptr=0;
+int count=50;
+void Sound_Handler(void)
+{
+	DAC_Out(wave[ptr]);
+	if(ptr==31)
+	{
+		count--;
+		if(count==0){
+			//Timer1_Init(1000);
+					Timer1_Init();
+			count=50;
+		}
+	}
+	ptr=(ptr+1)%32;
+}
+
+void DAC_Init(void){
+	SYSCTL_RCGCGPIO_R |= 0x02;
+	volatile int nop;
+	nop++;
+	nop++;
+	GPIO_PORTB_DEN_R|=0x0F;
+	GPIO_PORTB_DIR_R|=(0x0F);											//initialize PB0-3 as outputs for the DAC
+	
+	//Timer1_Init(4257);
+		Timer1_Init();
+}
+
+
+/*
+void Sound_Play(uint32_t period){ //const uint8_t *pt, uint32_t count)
+	if(period == 0) {
+		GPIO_PORTB_DATA_R = 0;
+		TIMER0_TAILR_R = 0;
+	}
+	else
+		TIMER0_TAILR_R = period;  //update systick interrupt period
+};
+*/
+void Timer1A_Handler(void){
+  TIMER1_ICR_R = TIMER_ICR_TATOCINT;// acknowledge timer0A timeout
+	DAC_Out(wave[ptr]);
+	if(ptr==31)
+	{
+		count--;
+		if(count==0){
+			//Timer1_Init(1000);
+			count=50;
+		}
+	}
+	ptr=(ptr+1)%32;
+}
+
+/*
+void Note(void){
+	//Sound_Play(A);
+	DAC_Init();
+	GPIO_PORTF_DATA_R ^= 0x04;
+	DAC_Out(wave[waveCount]);
+	waveCount = (waveCount + 1) % 30;
+}
+*/
+
 uint32_t array[2];
 long x = 64;
 long y = 160;
+int level = 1;
+int endGame = 0;
+int winGame = 0;
+int lives = 3;
+int levelWait = 0;
 
 typedef struct enemy{
 	uint32_t x_pos;
@@ -89,9 +217,10 @@ void InitEnemy(enemy_t* init, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2
 void MoveEnemy(enemy_t *init, int space){
 	if (init->x_pos >= 128)
 		init->x_pos=0;
-	else if (space < 0 && init->x_pos == 0){
+	else if (space < 0 && init->x_pos <= 5){
 		init->x_pos = 128;
-		ST7735_FillRect(0,105,35,15,0x0000);
+		ST7735_FillRect(0,107,37,15,0x0000);
+		ST7735_FillRect(0,53,37,15,0x0000);
 	}
 	init->x_pos = (init->x_pos + space);
 	ST7735_DrawBitmap(init->x_pos, init->y_pos, init->image, init->x_size, init->y_size);
@@ -102,10 +231,10 @@ void MoveEnemy(enemy_t *init, int space){
 //returns 0 if no collision detected
 //returns 1 if a collision is detected
 int CheckCollision(uint32_t px, uint32_t py, enemy_t* check){
-	if((py-18) <= check->y_pos && (py >= (check->y_pos - check->y_size) && (px >= check->x_pos) && (px <= (check->x_pos + check->x_size))))
+	if(((py-18) <= check->y_pos) && (py >= (check->y_pos - check->y_size)) && (px >= check->x_pos) && (px <= (check->x_pos + check->x_size)))
 		return 1;
-	
-	return 0;
+	else
+		return 0;
 }
 
 int CheckGrassToStreet(){
@@ -134,7 +263,9 @@ int CheckStreetToGrassDown(){
 
 enemy_t car1;
 enemy_t truck1;
-
+enemy_t car2;
+enemy_t truck2;
+enemy_t car3;
 
 void SysTick_Init(void){
 	NVIC_ST_CTRL_R = 0;                   // disable SysTick during setup
@@ -143,19 +274,31 @@ void SysTick_Init(void){
   NVIC_ST_CTRL_R = 0x07; // enable SysTick with core clock and interrupts
 }
 
+
 void PortF_Init(void){
+	
 	volatile int delay;
-	SYSCTL_RCGCGPIO_R |= 0x20;  //initialize port F clock
+	SYSCTL_RCGCGPIO_R |= 0x20;     // 1) activate clock for Port F
+  delay = SYSCTL_RCGC2_R;           // allow time for clock to start
 	delay++;
-	GPIO_PORTF_DEN_R |= 0x1E;   //enables PF1, PF2, PF3, PF4
-	GPIO_PORTF_DIR_R |= 0x0E;   //establish PF1, PF2, PF3 as outputs, PF4 as input
+  GPIO_PORTF_LOCK_R = 0x4C4F434B;   // 2) unlock GPIO Port F
+  GPIO_PORTF_CR_R = 0x1F;           // allow changes to PF4-0
+  // only PF0 needs to be unlocked, other bits can't be locked
+  GPIO_PORTF_AMSEL_R = 0x00;        // 3) disable analog on PF
+  GPIO_PORTF_PCTL_R = 0x00000000;   // 4) PCTL GPIO on PF4-0
+  GPIO_PORTF_DIR_R = 0x0E;          // 5) PF4,PF0 in, PF3-1 out
+  GPIO_PORTF_AFSEL_R = 0x00;        // 6) disable alt funct on PF7-0
+  GPIO_PORTF_PUR_R = 0x11;          // enable pull-up on PF0 and PF4
+  GPIO_PORTF_DEN_R = 0x1F;          // 7) enable digital I/O on PF4-0
 	
 	volatile int delay2;
 	SYSCTL_RCGCGPIO_R |= 0x01;  //initialize port A clock
 	delay2++;
 	GPIO_PORTA_DEN_R |= 0x10;   //enable PA4
 	GPIO_PORTA_DIR_R &= 0xEF;   //enable PA4 as input
+	
 }
+
 
 void setGrass(void){
 	ST7735_DrawBitmap(0, 34, GRASS, 24,18);
@@ -181,17 +324,58 @@ void setGrass(void){
 	ST7735_DrawBitmap(117, 160, GRASS, 24,18);
 }
 
+void finishLevelorDeadRestart(void){
+	    DisableInterrupts();
+			ST7735_SetCursor(0,6);
+			ST7735_OutString("Ready?");
+			ST7735_SetCursor(0,7);
+			ST7735_OutString("Yes or No?");
+			while (!(((GPIO_PORTA_DATA_R & 0x10) == 0x10) || (GPIO_PORTF_DATA_R & 0x10) == 0x00))
+			{}; 
+			/*while((GPIO_PORTA_DATA_R & 0x10) == 0 || (GPIO_PORTD_DATA_R & 0x01) == 0x0){
+				int titleDelay = 0;
+				int titleDelay2 = 0;
+				while(titleDelay != 10){
+					titleDelay++;
+				}
+		
+				while(titleDelay2 != 10){
+					titleDelay2++;
+				}
+			}
+			*/
+			if((GPIO_PORTA_DATA_R & 0x10) == 0x10){
+				x = 64; 
+				y = 160;
+				levelWait = 0;
+				ST7735_FillRect(0,36,60,50,0x0000);
+				SysTick_Init();
+				EnableInterrupts();
+			}
+			
+			if((GPIO_PORTF_DATA_R & 0x10) == 0x00){
+				endGame = 1;
+				ST7735_FillScreen(0x00);
+				ST7735_DrawBitmap(0, 160, gameoverscreen, 128,160);
+				DisableInterrupts();
+			}
+}
+
 int main(void){
   PLL_Init(Bus80MHz);       // Bus clock is 80 MHz 
+	//Timer1_Init(4000);
+  Timer1_Init();
   Random_Init(1);
   Output_Init();
+//	ST7735_InitR(INITR_REDTAB);
   ST7735_FillScreen(0x0000);            // set screen to black
 	ADC_Init89();
 	PortF_Init();
-	Timer0_Init();
-	Timer1_Init();
-	Sound_Init();
-	
+	ST7735_DrawBitmap(0, 160, splash, 128,160);
+	//DAC_Init();
+ // Timer1_Init(4000);
+	//TIMER0_TAILR_R = 0;
+	EnableInterrupts();
 	while((GPIO_PORTA_DATA_R & 0x10) == 0){
 		int titleDelay = 0;
 		int titleDelay2 = 0;
@@ -201,26 +385,81 @@ int main(void){
 		}
 		
 		while(titleDelay2 != 10){
-			ST7735_DrawBitmap(0, 160, splashflash, 128,160);
+			ST7735_DrawBitmap(0, 160, splashflash1, 128,160);
 			titleDelay2++;
 		}
-		
-	};
+	} 
+	
+	levelWait = 1;
+	DisableInterrupts();
 	ST7735_FillScreen(0x0000);            // set screen to black
 	setGrass();
+	ST7735_DrawBitmap(95, 10, frogheart, 11,9);
+	ST7735_DrawBitmap(106, 10, frogheart, 11,9);
+  ST7735_DrawBitmap(117, 10, frogheart, 11,9);
 	int count = 0;
-	InitEnemy(&car1, 0, 140, 22, 20, car);
-	InitEnemy(&truck1, 126,120, 35,15,truck);
-	EnableInterrupts();
-	SysTick_Init();
+	InitEnemy(&car1,     0, 140, 22, 20, car);
+	InitEnemy(&truck1, 126,123, 35,15,truck);
+	InitEnemy(&car2,     0, 86, 22, 20, car);
+	InitEnemy(&truck2, 126,66, 35,15,truck);
+	InitEnemy(&car3,     0, 51, 22, 20, car);
+	//EnableInterrupts();
+	//SysTick_Init();
 	ST7735_SetCursor(0,0);
 	ST7735_OutString("Level 1!");
   while(1){
+		if(endGame == 1){
+			ST7735_FillScreen(0x0000);            // set screen to black
+			DisableInterrupts();
+			ST7735_DrawBitmap(0, 160, gameoverscreen, 128,160);
+			if((GPIO_PORTA_DATA_R & 0x10) == 0x10){
+				ST7735_FillScreen(0x0000);            // set screen to black
+				ST7735_FillScreen(0x0000);            // set screen to black
+				ST7735_FillScreen(0x0000);            // set screen to black
+				setGrass();
+				ST7735_SetCursor(0,0);
+				ST7735_OutString("Level 1!");
+				ST7735_DrawBitmap(95, 10, frogheart, 11,9);
+				ST7735_DrawBitmap(106, 10, frogheart, 11,9);
+				ST7735_DrawBitmap(117, 10, frogheart, 11,9);
+				x = 64;
+				y = 160;
+				level = 1;
+				endGame = 0;
+				lives = 3;
+				EnableInterrupts();
+			}
+		}
+		else if (winGame == 1){
+			ST7735_FillScreen(0x0000);            // set screen to black
+			DisableInterrupts();
+			ST7735_DrawBitmap(0, 160, youwin, 128,160);
+			if((GPIO_PORTA_DATA_R & 0x10) == 0x10){
+				ST7735_FillScreen(0x0000);            // set screen to black
+				ST7735_FillScreen(0x0000);            // set screen to black
+				ST7735_FillScreen(0x0000);            // set screen to black
+				setGrass();
+				ST7735_SetCursor(0,0);
+				ST7735_OutString("Level 1!");
+				ST7735_DrawBitmap(95, 10, frogheart, 11,9);
+				ST7735_DrawBitmap(106, 10, frogheart, 11,9);
+				ST7735_DrawBitmap(117, 10, frogheart, 11,9);
+				x = 64;
+				y = 160;
+				level = 1;
+				winGame = 0;
+				lives = 3;
+				EnableInterrupts();
+			}
+		}
+		
+		else if (levelWait == 1){
+			finishLevelorDeadRestart();
+		}
 		
   }
 
 }
-
 
 
 
@@ -234,17 +473,36 @@ long xtruck_2 = 90;
 long xcar_3 = 30;
 void SysTick_Handler(void){
 	//	GPIO_PORTF_DATA_R ^= 0x04;
-	
-	//  ST7735_DrawBitmap(x, y, frograss, 24,18); 
+	  
 		ADC_In89(array);
 	  slow2++;
-		if(slow2 == 12){
+		if(slow2 == 9){
 			
-			if(array[0] < 2000){                       //up
+			if(array[0] < 1700){                       //up
 				if(CheckStreetToGrass() == 1){
 					y-= 18;
 					ST7735_DrawBitmap(x, y, frograss, 24,18);
 					ST7735_FillRect(x,y,24,18,0x0000);
+					if(y < 35){
+						if(level == 1){
+							level = 2;
+							ST7735_SetCursor(0,0);
+							ST7735_OutString("Level 2!");
+							levelWait = 1;
+						}
+						else if (level == 2){
+							level = 3;
+							ST7735_SetCursor(0,0);
+							ST7735_OutString("Level 3!");
+							levelWait = 1;
+						}
+						else if (level == 3){
+							winGame = 1;
+						}
+						x = 64;
+						y = 160;
+						ST7735_DrawBitmap(x, y, frograss, 24,18);
+					}
 				}
 				
 				else if(CheckGrassToStreet()==1){
@@ -263,7 +521,7 @@ void SysTick_Handler(void){
 				}
 			}
 			
-			if(array[0] > 2500){                        //down
+			else if(array[0] > 2700){                        //down
 				if(CheckStreetToGrassDown() == 1){
 					y+= 18;
 					ST7735_DrawBitmap(x, y, frograss, 24,18);
@@ -274,6 +532,7 @@ void SysTick_Handler(void){
 					y+=18;
 					ST7735_DrawBitmap(x, y, frog1, 24,18);
 					ST7735_DrawBitmap(x, y-18, GRASS, 24,18);
+				//	DAC_Init();
 				}
 				else {
 					if(y > 150)															 
@@ -286,7 +545,7 @@ void SysTick_Handler(void){
 				}
 			}
 		
-			if(array[1] > 2500){                          //right
+			else if(array[1] > 2700){                          //right
 				if(x > 103)
 					;
 				else{
@@ -301,7 +560,7 @@ void SysTick_Handler(void){
 					}
 				}
 			}
-			if(array[1] < 2000){                          //left
+			else if(array[1] < 1700){                          //left
 				if(x < 5)
 					;
 				else{
@@ -319,43 +578,104 @@ void SysTick_Handler(void){
 			slow2 = 0;
 		}
 		
-		slow++;
-		if (slow == 5){
-			MoveEnemy(&car1, 1);
-			MoveEnemy(&truck1, -1);
-			slow = 0;
+		//slow++;
+		
+		if(level == 1){
+	//		if (slow == 5){
+				MoveEnemy(&car1, 1);
+				MoveEnemy(&truck1, -1);
+	//			slow = 0;
+	//		}
 		}
 		
-		if(CheckCollision(x,y,&car1)==1 || CheckCollision(x,y,&truck1)==1){
-			ST7735_FillScreen(0x0000);            // set screen to black
-			DisableInterrupts();
-			ST7735_DrawBitmap(0, 160, gameoverscreen, 128,160);
-			//ST7735_SetCursor(0,0);
-			//ST7735_OutString("Level 1!");
-			//setGrass();
-			//x = 64;
-		  //y= 160;
+		 if(level == 2){
+		//	if (slow == 3){
+				MoveEnemy(&car1, 1);
+				MoveEnemy(&truck1, -1);
+			  MoveEnemy(&car2, 1);
+			  MoveEnemy(&truck2, -1);
+	//			slow = 0;
+	//		}
 		}
+		
+		 if(level == 3){
+	//		if (slow == 3){
+				MoveEnemy(&car1, 1);
+				MoveEnemy(&truck1, -1);
+		   	MoveEnemy(&car2, 1);
+		   	MoveEnemy(&truck2, -1);
+		  	MoveEnemy(&car3, 1);
+		//		slow = 0;
+		//	}
+		}
+		
+		if((CheckCollision(x,y,&car1)==1 ||CheckCollision(x,y,&truck1)==1) && levelWait == 0){
+			lives--;
+			if(lives == 2){
+				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
+				ST7735_FillRect(95,1,11,9,0x0000);
+				x = 64;
+				y = 160;
+			  ST7735_DrawBitmap(x, y, frograss, 24,18);
+				finishLevelorDeadRestart();
+			}
+			else if (lives == 1){
+				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
+				ST7735_FillRect(106,1,11,9,0x0000);
+				x = 64;
+				y = 160;
+			  ST7735_DrawBitmap(x, y, frograss, 24,18);
+				finishLevelorDeadRestart();
+			}
+			else if (lives == 0)
+				endGame = 1;
+		}
+		
+		
+		else if(((CheckCollision(x,y,&car2)==1 || CheckCollision(x,y,&truck2)==1)&&level==2) && levelWait == 0){
+			lives--;
+			if(lives == 2){
+				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
+				ST7735_FillRect(95,1,11,9,0x0000);
+				x = 64;
+				y = 160;
+			  ST7735_DrawBitmap(x, y, frograss, 24,18);
+				finishLevelorDeadRestart();
+			}
+			else if (lives == 1){
+				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
+				ST7735_FillRect(106,1,11,9,0x0000);
+				x = 64;
+				y = 160;
+			  ST7735_DrawBitmap(x, y, frograss, 24,18);
+				finishLevelorDeadRestart();
+			}
+			else if (lives == 0)
+				endGame = 1;
+		}
+		
+		else if(((CheckCollision(x,y,&car2)==1 || CheckCollision(x,y,&truck2)==1 || CheckCollision(x,y,&car3))&&level==3) && levelWait == 0){
+			lives--;
+			if(lives == 2){
+				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
+				ST7735_FillRect(95,1,11,9,0x0000);        //clear a life
+				x = 64;
+				y = 160;
+			  ST7735_DrawBitmap(x, y, frograss, 24,18);
+				finishLevelorDeadRestart();
+			}
+			else if (lives == 1){
+				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
+				ST7735_FillRect(106,1,11,9,0x0000);       //clear a life
+				x = 64;
+				y = 160;
+			  ST7735_DrawBitmap(x, y, frograss, 24,18);
+				finishLevelorDeadRestart();
+			}
+			else if (lives == 0)
+				endGame = 1;
+		}
+		
 		
 }
-
-
-
-
-
-
-
-
-/* You can't use this timer, it is here for starter code only 
-// you must use interrupts to perform delays
-void Delay100ms(uint32_t count){
-	uint32_t volatile time;
-  while(count>0){
-    time = 727240;  // 0.1sec at 80 MHz
-    while(time){
-	  	time--;
-    }
-    count--;
-  }
-} */
 
