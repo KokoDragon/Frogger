@@ -1,0 +1,2 @@
+void StartScreen(void);
+
