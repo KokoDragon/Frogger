@@ -30,15 +30,6 @@ const unsigned short wave[31] = {8,9,11,12,13,14,14,15,15,14,14,13,12,11,9,8,7,5
 uint32_t waveCount = 0;
 
 void (*PeriodicTask1)(void);   // user function
-	
-	
-/*void DAC_Out(uint32_t data){
-	GPIO_PORTB_DATA_R &= 0x0;
-	GPIO_PORTB_DATA_R |= (0x01 & data);
-	GPIO_PORTB_DATA_R |= (0x02 & data);
-	GPIO_PORTB_DATA_R |= (0x04 & data);
-	GPIO_PORTB_DATA_R |= (0x08 & data);
-}*/
 
 // ***************** TIMER1_Init ****************
 // Activate TIMER1 interrupts to run user task periodically
@@ -63,7 +54,7 @@ void Timer1_Init(void){
 
 void Timer1A_Handler(void){
   GPIO_PORTF_DATA_R ^= 0x02;  //change LED
-	DAC_Out(wave[waveCount]);		//update to the next sine table value
+//	DAC_Out(wave[waveCount]);		//update to the next sine table value
 	if(waveCount <=29)          //check for end of array
 		waveCount++; 
 	else

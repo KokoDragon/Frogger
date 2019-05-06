@@ -408,11 +408,6 @@
               <FilePath>.\Timer0.c</FilePath>
             </File>
             <File>
-              <FileName>Timer1.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Timer1.c</FilePath>
-            </File>
-            <File>
               <FileName>Sound.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Sound.c</FilePath>
@@ -443,24 +438,14 @@
               <FilePath>.\PLL.c</FilePath>
             </File>
             <File>
-              <FileName>SysTick.c</FileName>
+              <FileName>Levels.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\SysTick.c</FilePath>
+              <FilePath>.\Levels.c</FilePath>
             </File>
             <File>
-              <FileName>Images.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Images.c</FilePath>
-            </File>
-            <File>
-              <FileName>SysTick.h</FileName>
+              <FileName>Levels.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\SysTick.h</FilePath>
-            </File>
-            <File>
-              <FileName>tm4c123gh6pm.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\inc\tm4c123gh6pm.h</FilePath>
+              <FilePath>.\Levels.h</FilePath>
             </File>
           </Files>
         </Group>

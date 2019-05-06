@@ -18,7 +18,7 @@
     THUMB
 
 quotient EQU 0
-;remainder EQU 4
+remainder EQU 4
 number EQU 1000000000
 	
 ;-----------------------LCD_OutDec-----------------------
@@ -37,21 +37,18 @@ LCD_OutDec
 divloop
 	  UDIV R1, R12
 	  CMP R1, R0
-	  BGT divloop
+	  BHI divloop
 
 recursion
-	  MOV R3, #0
-	  STR R3, [SP, #quotient]
+	  MOV R3, #0  ;counter
 	  CMP R1, #1
 	  BEQ diveq1  ;return number once div equals 1
 	  
 L1
 	  CMP R0, R1
-	  BLT div10
+	  BLO div10
 	  SUB R0, R0, R1
-	  LDR R3, [SP, #quotient]
-	  ADD R3, #1
-	  STR R3, [SP, #quotient]
+	  ADD R3, #1       ;R3 is counter
 	  B L1
 div10
 	  UDIV R1, R12
@@ -66,7 +63,6 @@ done
 	  ;ADD R4, R4, #1   ;R4 is recursive counter
 	  ;PUSH {R3, R4}
 	  MOV R2, R0
-	  LDR R3, [SP, #quotient]
 	  MOV R0, R3
 	  ADD R0, #0x30
 	  PUSH{R1,R2,R6,R7}
@@ -74,7 +70,6 @@ done
 	  POP{R1,R2,R6,R7}
 	  MOV R0, R2
 	  B recursion
-	  ADD SP, #8
       BX  LR
 ;* * * * * * * * End of LCD_OutDec * * * * * * * *
 
@@ -91,21 +86,19 @@ done
 ;       R0>9999, then output "*.*** "
 ; Invariables: This function must not permanently modify registers R4 to R11
 
-counter  EQU 0
+counter EQU 0
 number1 EQU 9999
-
 LCD_OutFix
-    PUSH {R0, LR}
-	
-	SUB SP, #8 ;allocate space for local variables
-	
-	MOV R12, #0
-	STR R12, [SP, #counter] ;initialize counter local variable with 0
-	
-	LDR R12, =number1
-	
-	CMP R0, R12
-	BGT tooLarge     ;number is too large, print *.***
+     PUSH {R0, LR}
+	 SUB SP, #8 ;allocate space for local variables
+	 
+	 MOV R12, #0
+	 STR R12, [SP, #counter] ;initialize counter local variable with 0
+	 
+	 LDR R12, =number1
+	 CMP R0, R12
+     BHI tooLarge     ;number is too large, print *.***
+
 	MOV R1, #1000	 
 	MOV R3, #10
 	
@@ -113,51 +106,50 @@ div
 	LDR R12, [SP, #counter]
 	ADD R12, #1
 	STR R12, [SP, #counter]
-	
+
 	CMP R12, #2
 	BEQ period
-	
+
 	CMP R12, #6
 	BEQ endFix
 
 	UDIV R2, R0, R1
 	CMP R2, #0
 	BNE case1
-	
+
 	PUSH {R0, R1, R2, R3}
 	MOV R0, #0x30  ;prints first zero
 	BL ST7735_OutChar
 	POP {R0, R1, R2, R3}	
-	
+
 	UDIV R1, R3
 	B noperiod
-	
+
 period
 	PUSH {R0, R1, R2, R3}
 	MOV R0, #0x2E  ;prints decimal point
 	BL ST7735_OutChar
 	POP {R0, R1, R2, R3}
-	
+
 noperiod	
 	B div
-	
+
 case1
-	
 	PUSH {R0, R1, R2, R3}
 	MOV R0, R2  ;prints character
 	ADD R0, #0x30
 	BL ST7735_OutChar
 	POP {R0, R1, R2, R3}
+	
 	MUL R12, R1, R2
 	SUB R0, R0, R12
 
 	CMP R1, #1
 	BEQ endFix
-	
+
 	UDIV R1, R3
-	
 	B div
-	
+
 tooLarge
 	MOV R0, #0x2A
 	BL ST7735_OutChar
@@ -169,7 +161,7 @@ tooLarge
 	BL ST7735_OutChar
 	MOV R0, #0X2A
 	BL ST7735_OutChar
-	
+
 endFix
 	 ADD SP, #8 ;de-allocate local variable space
 	 POP {R0, LR}

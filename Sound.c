@@ -8,7 +8,7 @@
 #include "../inc/tm4c123gh6pm.h"
 #include "Sound.h"
 #include "Timer0.h"
-#include "Timer1.h"
+//#include "Timer1.h"
 //#include "DAC.h"
 
 
@@ -1147,35 +1147,6 @@ const uint8_t highpitch[1802] = {
   67, 119, 148, 166, 164, 238, 223, 202, 174, 112, 96, 78, 0, 34, 54, 99, 143, 160, 166, 183, 
   250, 207};
 
-/*void DAC_Init(void){
-	volatile uint32_t count;
-	SYSCTL_RCGCGPIO_R |= 0x02;
-	count = 0;
-	GPIO_PORTB_DEN_R |= 0x0F;
-	GPIO_PORTB_DIR_R |= 0x0F;
-}*/
-
-/* void DAC_Out(uint32_t data){
-	GPIO_PORTB_DATA_R &= 0x0;
-	GPIO_PORTB_DATA_R |= (0x01 & data);
-	GPIO_PORTB_DATA_R |= (0x02 & data);
-	GPIO_PORTB_DATA_R |= (0x04 & data);
-	GPIO_PORTB_DATA_R |= (0x08 & data);
-}*/
-void Sound_Init(void){
-	DAC_Init();
-	Timer0_Init();
-	Timer1_Init();
-	
-};
-void Sound_Play(uint32_t period){ //const uint8_t *pt, uint32_t count)
-	if(period == 0) {
-		GPIO_PORTB_DATA_R = 0;
-		TIMER1_TAILR_R = 0;
-	}
-	else
-		TIMER1_TAILR_R = period;  //update systick interrupt period
-};
 void Sound_Shoot(void){
 // write this
 };
