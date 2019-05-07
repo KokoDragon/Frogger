@@ -70,6 +70,7 @@ void Delay100ms(uint32_t count); // time delay in 0.1 seconds
 
 const unsigned short wave[31] = {8,9,11,12,13,14,14,15,15,14,14,13,12,11,9,8,7,5,4,3,2,2,1,1,1,2,2,3,4,5,7}; //4-bit sine wave table
 uint32_t waveCount = 0;
+int soundC = 0;
 void (*PeriodicTask)(void);
 	
 // **************DAC_Init*********************
@@ -87,7 +88,7 @@ void Timer1_Init(/*uint32_t period*/){
   TIMER1_CTL_R = 0x00000000;    // 1) disable TIMER1A during setup
   TIMER1_CFG_R = 0x00000000;    // 2) configure for 32-bit mode
   TIMER1_TAMR_R = 0x00000002;   // 3) configure for periodic mode, default down-count settings
-  TIMER1_TAILR_R = 4000;         //period-1;    // 4) reload value
+  //TIMER1_TAILR_R = 4000;         //period-1;    // 4) reload value
   TIMER1_TAPR_R = 0;            // 5) bus clock resolution
   TIMER1_ICR_R = 0x00000001;    // 6) clear TIMER1A timeout flag
   TIMER1_IMR_R = 0x00000001;    // 7) arm timeout interrupt
@@ -122,8 +123,9 @@ void Timer1_Init(/*uint32_t period*/){
 } */
 void DAC_Out(uint32_t data)
 {
-	GPIO_PORTB_DATA_R=data&0x0F;
-}	
+	GPIO_PORTB_DATA_R &= 0xF0;
+	GPIO_PORTB_DATA_R|= (data&0x0F);
+ }	
 
 int ptr=0;
 int count=50;
@@ -151,7 +153,7 @@ void DAC_Init(void){
 	GPIO_PORTB_DIR_R|=(0x0F);											//initialize PB0-3 as outputs for the DAC
 	
 	//Timer1_Init(4257);
-		Timer1_Init();
+	//	Timer1_Init();
 }
 
 
@@ -165,18 +167,22 @@ void Sound_Play(uint32_t period){ //const uint8_t *pt, uint32_t count)
 		TIMER0_TAILR_R = period;  //update systick interrupt period
 };
 */
+
 void Timer1A_Handler(void){
   TIMER1_ICR_R = TIMER_ICR_TATOCINT;// acknowledge timer0A timeout
 	DAC_Out(wave[ptr]);
-	if(ptr==31)
-	{
-		count--;
-		if(count==0){
-			//Timer1_Init(1000);
-			count=50;
+	if(soundC > 1000){
+		if(ptr==31)
+		{
+			count--;
+			if(count==0){
+				//Timer1_Init(1000);
+				count=50;
+			}
 		}
+		ptr=(ptr+1)%32;
+		soundC--;
 	}
-	ptr=(ptr+1)%32;
 }
 
 /*
@@ -231,11 +237,12 @@ void MoveEnemy(enemy_t *init, int space){
 //returns 0 if no collision detected
 //returns 1 if a collision is detected
 int CheckCollision(uint32_t px, uint32_t py, enemy_t* check){
-	if(((py-18) <= check->y_pos) && (py >= (check->y_pos - check->y_size)) && (px >= check->x_pos) && (px <= (check->x_pos + check->x_size)))
+	if((px+12) > check->x_pos && (px+12) < (check->x_pos+check->x_size) && (py-9) < check->y_pos && (py-9) > (check->y_pos-check->y_size))
 		return 1;
-	else
+	else 
 		return 0;
 }
+
 
 int CheckGrassToStreet(){
 	if(y == 160 || y==106)
@@ -266,6 +273,9 @@ enemy_t truck1;
 enemy_t car2;
 enemy_t truck2;
 enemy_t car3;
+enemy_t car4;
+enemy_t car5;
+enemy_t car6;
 
 void SysTick_Init(void){
 	NVIC_ST_CTRL_R = 0;                   // disable SysTick during setup
@@ -363,19 +373,23 @@ void finishLevelorDeadRestart(void){
 
 int main(void){
   PLL_Init(Bus80MHz);       // Bus clock is 80 MHz 
+	DisableInterrupts();
 	//Timer1_Init(4000);
   Timer1_Init();
+	DAC_Init();
   Random_Init(1);
   Output_Init();
-//	ST7735_InitR(INITR_REDTAB);
-  ST7735_FillScreen(0x0000);            // set screen to black
-	ADC_Init89();
+  //ST7735_InitR(INITR_REDTAB);
+  ADC_Init89();
 	PortF_Init();
+	EnableInterrupts();
+	TIMER1_TAILR_R = 4000;
+	ST7735_FillScreen(0x0000);            // set screen to black
 	ST7735_DrawBitmap(0, 160, splash, 128,160);
 	//DAC_Init();
  // Timer1_Init(4000);
 	//TIMER0_TAILR_R = 0;
-	EnableInterrupts();
+	
 	while((GPIO_PORTA_DATA_R & 0x10) == 0){
 		int titleDelay = 0;
 		int titleDelay2 = 0;
@@ -398,11 +412,15 @@ int main(void){
 	ST7735_DrawBitmap(106, 10, frogheart, 11,9);
   ST7735_DrawBitmap(117, 10, frogheart, 11,9);
 	int count = 0;
-	InitEnemy(&car1,     0, 140, 22, 20, car);
+	InitEnemy(&car1,     0, 141, 22, 18, car);
 	InitEnemy(&truck1, 126,123, 35,15,truck);
 	InitEnemy(&car2,     0, 86, 22, 20, car);
 	InitEnemy(&truck2, 126,66, 35,15,truck);
 	InitEnemy(&car3,     0, 51, 22, 20, car);
+	//new cars
+	InitEnemy(&car4, 50, 141, 22, 18, car);
+	InitEnemy(&car5, 65, 51, 22, 20, car);
+	InitEnemy(&car6, 90, 86, 22, 20, car);
 	//EnableInterrupts();
 	//SysTick_Init();
 	ST7735_SetCursor(0,0);
@@ -475,10 +493,12 @@ void SysTick_Handler(void){
 	//	GPIO_PORTF_DATA_R ^= 0x04;
 	  
 		ADC_In89(array);
+	
 	  slow2++;
-		if(slow2 == 9){
+		if(slow2 == 10){
 			
-			if(array[0] < 1700){                       //up
+			if(array[0] < 1700){   															//up
+			soundC = 2000;
 				if(CheckStreetToGrass() == 1){
 					y-= 18;
 					ST7735_DrawBitmap(x, y, frograss, 24,18);
@@ -521,7 +541,8 @@ void SysTick_Handler(void){
 				}
 			}
 			
-			else if(array[0] > 2700){                        //down
+			else if(array[0] > 2700){   
+				soundC = 2000;													//down
 				if(CheckStreetToGrassDown() == 1){
 					y+= 18;
 					ST7735_DrawBitmap(x, y, frograss, 24,18);
@@ -545,7 +566,8 @@ void SysTick_Handler(void){
 				}
 			}
 		
-			else if(array[1] > 2700){                          //right
+			else if(array[1] > 2700){
+				soundC = 2000;															//right
 				if(x > 103)
 					;
 				else{
@@ -560,7 +582,8 @@ void SysTick_Handler(void){
 					}
 				}
 			}
-			else if(array[1] < 1700){                          //left
+			else if(array[1] < 1400){
+				soundC = 2000;																//left
 				if(x < 5)
 					;
 				else{
@@ -578,41 +601,34 @@ void SysTick_Handler(void){
 			slow2 = 0;
 		}
 		
-		//slow++;
 		
 		if(level == 1){
-	//		if (slow == 5){
 				MoveEnemy(&car1, 1);
 				MoveEnemy(&truck1, -1);
-	//			slow = 0;
-	//		}
 		}
 		
 		 if(level == 2){
-		//	if (slow == 3){
 				MoveEnemy(&car1, 1);
 				MoveEnemy(&truck1, -1);
 			  MoveEnemy(&car2, 1);
 			  MoveEnemy(&truck2, -1);
-	//			slow = 0;
-	//		}
+			  MoveEnemy(&car3, 1);
 		}
 		
 		 if(level == 3){
-	//		if (slow == 3){
 				MoveEnemy(&car1, 1);
 				MoveEnemy(&truck1, -1);
 		   	MoveEnemy(&car2, 1);
 		   	MoveEnemy(&truck2, -1);
 		  	MoveEnemy(&car3, 1);
-		//		slow = 0;
-		//	}
+			  MoveEnemy(&car4, 1);
+			  MoveEnemy(&car5, 1);
+			  MoveEnemy(&car6, 1);
 		}
 		
 		if((CheckCollision(x,y,&car1)==1 ||CheckCollision(x,y,&truck1)==1) && levelWait == 0){
 			lives--;
 			if(lives == 2){
-				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
 				ST7735_FillRect(95,1,11,9,0x0000);
 				x = 64;
 				y = 160;
@@ -620,7 +636,6 @@ void SysTick_Handler(void){
 				finishLevelorDeadRestart();
 			}
 			else if (lives == 1){
-				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
 				ST7735_FillRect(106,1,11,9,0x0000);
 				x = 64;
 				y = 160;
@@ -635,7 +650,6 @@ void SysTick_Handler(void){
 		else if(((CheckCollision(x,y,&car2)==1 || CheckCollision(x,y,&truck2)==1)&&level==2) && levelWait == 0){
 			lives--;
 			if(lives == 2){
-				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
 				ST7735_FillRect(95,1,11,9,0x0000);
 				x = 64;
 				y = 160;
@@ -643,7 +657,6 @@ void SysTick_Handler(void){
 				finishLevelorDeadRestart();
 			}
 			else if (lives == 1){
-				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
 				ST7735_FillRect(106,1,11,9,0x0000);
 				x = 64;
 				y = 160;
@@ -654,10 +667,9 @@ void SysTick_Handler(void){
 				endGame = 1;
 		}
 		
-		else if(((CheckCollision(x,y,&car2)==1 || CheckCollision(x,y,&truck2)==1 || CheckCollision(x,y,&car3))&&level==3) && levelWait == 0){
+		else if(((CheckCollision(x,y,&car2)==1 || CheckCollision(x,y,&truck2)==1 || CheckCollision(x,y,&car3))&&(level==3 || level ==2)) && levelWait == 0){
 			lives--;
 			if(lives == 2){
-				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
 				ST7735_FillRect(95,1,11,9,0x0000);        //clear a life
 				x = 64;
 				y = 160;
@@ -665,7 +677,6 @@ void SysTick_Handler(void){
 				finishLevelorDeadRestart();
 			}
 			else if (lives == 1){
-				ST7735_FillRect(x,y+18,24,18,0x0000);     //clear death location
 				ST7735_FillRect(106,1,11,9,0x0000);       //clear a life
 				x = 64;
 				y = 160;
@@ -676,6 +687,25 @@ void SysTick_Handler(void){
 				endGame = 1;
 		}
 		
+		else if(((CheckCollision(x,y,&car4)==1 || CheckCollision(x,y,&car5)==1 || CheckCollision(x,y,&car6)==1)&&level==3) && levelWait == 0){
+			lives--;
+			if(lives == 2){
+				ST7735_FillRect(95,1,11,9,0x0000);        //clear a life
+				x = 64;
+				y = 160;
+			  ST7735_DrawBitmap(x, y, frograss, 24,18);
+				finishLevelorDeadRestart();
+			}
+			else if (lives == 1){
+				ST7735_FillRect(106,1,11,9,0x0000);       //clear a life
+				x = 64;
+				y = 160;
+			  ST7735_DrawBitmap(x, y, frograss, 24,18);
+				finishLevelorDeadRestart();
+			}
+			else if (lives == 0)
+				endGame = 1;
+		}
 		
 }
 
