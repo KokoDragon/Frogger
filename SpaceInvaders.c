@@ -421,6 +421,7 @@ int main(void){
 	InitEnemy(&car4, 50, 141, 22, 18, car);
 	InitEnemy(&car5, 65, 51, 22, 20, car);
 	InitEnemy(&car6, 90, 86, 22, 20, car);
+	ST7735_DrawBitmap(64, 160, frograss, 24,18);
 	//EnableInterrupts();
 	//SysTick_Init();
 	ST7735_SetCursor(0,0);
@@ -435,6 +436,7 @@ int main(void){
 				ST7735_FillScreen(0x0000);            // set screen to black
 				ST7735_FillScreen(0x0000);            // set screen to black
 				setGrass();
+				ST7735_DrawBitmap(64, 160, frograss, 24,18);
 				ST7735_SetCursor(0,0);
 				ST7735_OutString("Level 1!");
 				ST7735_DrawBitmap(95, 10, frogheart, 11,9);
@@ -457,6 +459,7 @@ int main(void){
 				ST7735_FillScreen(0x0000);            // set screen to black
 				ST7735_FillScreen(0x0000);            // set screen to black
 				setGrass();
+				ST7735_DrawBitmap(64, 160, frograss, 24,18);
 				ST7735_SetCursor(0,0);
 				ST7735_OutString("Level 1!");
 				ST7735_DrawBitmap(95, 10, frogheart, 11,9);
@@ -609,21 +612,21 @@ void SysTick_Handler(void){
 		
 		 if(level == 2){
 				MoveEnemy(&car1, 1);
-				MoveEnemy(&truck1, -1);
+				MoveEnemy(&truck1, -2);
 			  MoveEnemy(&car2, 1);
-			  MoveEnemy(&truck2, -1);
-			  MoveEnemy(&car3, 1);
+			  MoveEnemy(&truck2, -2);
+			  MoveEnemy(&car3, 2);
 		}
 		
 		 if(level == 3){
-				MoveEnemy(&car1, 1);
-				MoveEnemy(&truck1, -1);
-		   	MoveEnemy(&car2, 1);
-		   	MoveEnemy(&truck2, -1);
-		  	MoveEnemy(&car3, 1);
-			  MoveEnemy(&car4, 1);
-			  MoveEnemy(&car5, 1);
-			  MoveEnemy(&car6, 1);
+				MoveEnemy(&car1, 2);
+				MoveEnemy(&truck1, -2);
+		   	MoveEnemy(&car2, 2);
+		   	MoveEnemy(&truck2, -2);
+		  	MoveEnemy(&car3, 2);
+			  MoveEnemy(&car4, 2);
+			  MoveEnemy(&car5, 2);
+			  MoveEnemy(&car6, 2);
 		}
 		
 		if((CheckCollision(x,y,&car1)==1 ||CheckCollision(x,y,&truck1)==1) && levelWait == 0){
